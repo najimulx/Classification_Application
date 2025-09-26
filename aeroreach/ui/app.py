@@ -24,7 +24,10 @@ import streamlit.components.v1 as components
 import uuid
 import hashlib
 
-DATA_PATH = os.path.join(os.path.dirname(__file__), '../../AeroReach Insights.csv')
+# Resolve dataset path relative to the repository root (two levels up from this file).
+# Use pathlib.resolve().parents[2] so this works reliably on Streamlit Cloud and
+# different working directories / OS path formats.
+DATA_PATH = str(pathlib.Path(__file__).resolve().parents[2] / 'AeroReach Insights.csv')
 
 def load_and_preprocess():
     data_loader = DataLoader(DATA_PATH)
@@ -543,18 +546,39 @@ def main():
             
             col1, col2 = st.columns(2)
             with col1:
+                # Safely compute stability score from cross-validation results
+                cv_results_local = metrics.get('cross_validation') if isinstance(metrics, dict) else None
+                cv_mean_local = cv_results_local.get('mean') if cv_results_local else None
+                cv_std_local = cv_results_local.get('std') if cv_results_local else None
+                if cv_mean_local is not None and cv_std_local is not None and cv_mean_local != 0:
+                    stability_score = 1 - (cv_std_local / cv_mean_local)
+                    stability_display = f"{stability_score:.2%}"
+                else:
+                    stability_display = "N/A"
+
                 metric_with_tooltip(
                     "Model Stability Score",
-                    f"{(1 - cv_results['std']/cv_results['mean']):.2%}",
+                    stability_display,
                     "Measures how consistent the model's predictions are across different subsets of data. "
-                    "Higher is better, with >95% being excellent."
+                    "Higher is better, with >95% being excellent. If N/A, cross-validation results are missing or incomplete."
                 )
             with col2:
+                # Safely compute generalization score (test accuracy vs CV mean)
+                test_acc = None
+                if isinstance(metrics, dict):
+                    test_acc = metrics.get('test_metrics', {}).get('accuracy')
+
+                if cv_mean_local and test_acc is not None and cv_mean_local != 0:
+                    gen_score = test_acc / cv_mean_local
+                    gen_display = f"{gen_score:.2%}"
+                else:
+                    gen_display = "N/A"
+
                 metric_with_tooltip(
                     "Generalization Score",
-                    f"{(metrics['test_metrics']['accuracy']/cv_results['mean']):.2%}",
+                    gen_display,
                     "Ratio of test performance to training performance. "
-                    "Values close to 100% indicate good generalization."
+                    "Values close to 100% indicate good generalization. If N/A, either test metrics or CV mean are unavailable."
                 )
         
         # Confusion Matrix

@@ -1,0 +1,85 @@
+﻿
+
+
+
+
+
+
+
+Project Synopsis
+
+
+NameJEBA AFRIN MANNANUSN232VMBR02597ElectiveData Science and AnalyticsDate of Submission18-08-2025 
+
+
+
+
+
+
+AeroReach Customer Insight: Developing Clustering Models for Targeted Tourism Marketing
+A Project Synopsis
+Executive Summary
+The aviation sector struggles with inefficient advertising strategies where promotional content fails to connect with the right audience, resulting in excessive spending with minimal returns. Most companies still use basic demographic information like age or location to target their ads, which doesn't capture how customers actually behave online. The AeroReach Insights dataset will be analysed to create clustering algorithms that group travellers according to their digital footprint and platform interactions.
+The dataset contains mixed data types - both numerical values (like time spent on travel pages) and categorical information (like device preference). K-Prototypes clustering will be applied as it can handle both numerical and categorical variables simultaneously within a single framework. We will also test Hierarchical clustering with Gower distance as an alternative approach. After finding customer groups, we will build a classification model to automatically assign new customers to the right group. Airlines can then design specific promotional strategies tailored to each identified customer group.
+Objectives and Scope
+The goal is to enhance tourism sector's online advertising effectiveness using analytical customer grouping techniques through these specific aims:
+• Objective 1: To implement K-Prototypes clustering algorithm for identifying customer segments from mixed-type data. The method integrates distance calculations for continuous variables with matching techniques for discrete variables, enabling comprehensive data analysis without converting variable types.
+• Objective 2: To apply Hierarchical clustering using Gower distance metric as an alternative segmentation approach. Gower distance can calculate similarity between data points that have both numerical and categorical attributes, making it suitable for our mixed dataset.
+• Objective 3: To construct a Random Forest-based prediction system for assigning incoming users to established segments according to their characteristics. The trained algorithm will identify segment patterns to facilitate immediate user classification.
+The significance of this project lies in moving beyond simple rule-based targeting to data-driven segmentation. Existing approaches often rely on simplistic criteria such as "millennials living in cities" or "frequent flyers above 40." This analysis aims to uncover hidden customer groups within the data structure, such as "weekend researchers who book midweek" or "mobile users who engage with video content." This deeper understanding of customer behaviour patterns will enable more effective ad targeting.
+Methodology
+This project follows an Exploratory and Empirical Research approach. The exploratory aspect involves discovering hidden patterns in customer data, while the empirical component focuses on testing and validating clustering algorithms.
+The research uses Secondary Data from the AeroReach Insights dataset containing 11,760 customer records with 17 features.
+Data Description
+The dataset includes: 
+• Continuous variables: Annual travel page viewing average, likes distributed/collected, travel page commenting frequency, duration since recent trip check-in, peer travel influence score, platform usage minutes per day 
+• • Categorical features: Taken product (target variable), preferred device, member in family, preferred location type, following company page, working flag, adult flag (age group)
+Data Pre-processing
+• Handling Incomplete Data: Numerical missing values will be replaced with the middle value (median) since it remains stable against extreme values. Categorical gaps will be filled using the most frequent value or assigned a separate "Not Available" label based on variable significance.
+• Extreme Value Management: The IQR technique will help detect unusual data points in the dataset. Values beyond 1.5 times the IQR from Q1 and Q3 will be examined. Instead of removing outliers, we will cap them at reasonable limits to preserve data.
+• Feature Scaling: Numerical features will be standardized using Z-score normalization to ensure all features contribute equally to distance calculations during clustering.
+•  Encoding Categorical Variables: For clustering algorithms, categorical variables will be encoded appropriately - K-Prototypes can handle them directly, while for other analyses we will use one-hot encoding for nominal variables and label encoding for ordinal ones.
+Clustering Implementation
+K-Prototypes Method: This technique was developed for datasets containing both number and category variables. It works by: 
+• Integrating centroid-based partitioning for continuous data with mode-based partitioning for discrete data 
+• Using Euclidean distance for numerical attributes and simple matching distance for categorical attributes 
+• The total distance is calculated as: distance = numerical distance + γ × categorical distance, where γ is a weighting factor 
+• Multiple cluster counts (ranging from 3 to 8) will be evaluated using the bend point technique for optimization
+Gower Distance Hierarchical Method: For comparison purposes, the following steps will be taken: 
+• Gower distance calculation which handles mixed data types by computing normalized Manhattan distance for numerical features and Dice coefficient for categorical features 
+• Bottom-up grouping with Ward's criterion to reduce variance within groups 
+• Tree diagram creation to visualize cluster formation patterns across multiple levels 
+• Cutting the dendrogram at appropriate height to get the desired number of clusters
+Model Validation: 
+• Silhouette Score: Measures how similar an object is to its own cluster compared to other clusters (range: -1 to 1, higher is better) 
+• Davies-Bouldin Index: Evaluates cluster separation - lower values indicate better clustering 
+• Practical Assessment: Review of segment properties to verify they align with business logic
+
+Classification Model Development
+Following cluster formation, a tree ensemble model will be constructed: 
+• Data Division: Allocate 70% for model building, 15% for tuning, and 15% for final testing 
+• Random Forest Parameters: Start with 100 trees, maximum depth of 10, minimum samples per leaf of 5 
+• Variable Significance: Identify which attributes contribute most to segment prediction 
+• Performance Metrics: Calculate correctness rate, positive predictive value, sensitivity, and harmonic mean for all segments
+Expected Results
+Current airline marketing typically uses basic segmentation like: 
+• RFM (Recency, Frequency, Monetary) analysis 
+• Simple demographic buckets (age groups, income levels) 
+• Past purchase behaviour
+Our clustering approach is expected to reveal more nuanced customer segments such as:
+• Technology-Savvy Travelers: Active on digital platforms, smartphone-first users, conduct thorough pre-trip research 
+• Family Planners: Multiple family members, prefer comprehensive packages, engage with family-friendly content 
+• Business Travelers: Quick decision makers, desktop users during work hours, low social engagement 
+• Budget Seekers: High price comparison activity, engage with discount content, flexible travel dates
+Each segment will have distinct characteristics that inform marketing strategies: 
+• Preferred communication channels (mobile app notifications vs. email) 
+• Best time to engage (weekday mornings vs. weekend evenings) 
+• Content preferences (video content vs. text reviews) 
+• Booking patterns (advance planners vs. last-minute bookers)
+The final deliverable will be a working model that can: 
+• Process new customer data and assign them to appropriate segments 
+• Provide confidence scores for segment assignment 
+• Generate recommendations for marketing actions based on segment characteristics
+• Include documentation for implementation in production systems
+The model's performance will be validated through cross-validation and tested on holdout data to ensure it generalizes well to new customers. We expect the segmentation to provide actionable insights that can improve marketing campaign effectiveness compared to current broad-targeting approaches.
+

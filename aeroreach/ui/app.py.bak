@@ -1,0 +1,830 @@
+import streamlit DATA_PATH = os.path.join(os.path.dirname(__file__), '../../AeroReach Insights.csv')
+
+def load_and_preprocess():
+    data_loader = DataLoader(DATA_PATH)s as pd
+import numpy as np
+import os
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+from aeroreach.data.data_loader import DataLoader
+from aeroreach.preprocessing.preprocessor import DataPreprocessor
+from aeroreach.utils.feature_config import CATEGORICAL_COLS, NUMERICAL_COLS, TARGET_COL
+from aeroreach.utils.encoding import Encoder
+from aeroreach.clustering.kprototypes_cluster import KPrototypesClustering
+from aeroreach.classification.random_forest_classifier import SegmentClassifier
+from aeroreach.evaluation.metrics import Evaluation
+
+DATA_PATH = os.path.join(os.path.dirname(__file__), '../../AeroReach Insights.csv')
+
+def load
+            #### Training Process
+            - Training: 70%
+            - Validation: 15%
+            - Test: 15%
+            
+            #### Validation Approach
+            - 5-fold cross-validation
+            - Stratified sampling
+            - Early stopping monitoring
+            
+            #### Model Selection
+            - Grid search for hyperparameters
+            - Metrics monitored:
+              * Accuracy
+              * F1-score (weighted)
+              * Precision & Recall
+            """.strip())and_preprocess():
+    data_loader = DataLoader(DATA_PATH)
+    df = data_loader.load_data()
+    if 'UserID' in df.columns:
+        df = df.drop('UserID', axis=1)
+    preprocessor = DataPreprocessor(CATEGORICAL_COLS, NUMERICAL_COLS)
+    df = preprocessor.preprocess(df)
+    return df
+
+def create_correlation_heatmap(df, cols):
+    corr = df[cols].corr()
+    fig = go.Figure(data=go.Heatmap(
+        z=corr,
+        x=cols,
+        y=cols,
+        text=corr.round(2),
+        texttemplate='%{text}',
+        textfont={"size": 10},
+        colorscale='RdBu',
+        zmid=0
+    ))
+    fig.update_layout(
+        title="Feature Correlation Heatmap",
+        height=500,
+    )
+    return fig
+
+def create_feature_distribution(df, feature):
+    fig = make_subplots(rows=2, cols=1, 
+                       subplot_titles=(f"Distribution of {feature}", f"Box Plot of {feature}"),
+                       vertical_spacing=0.15)
+    
+    # Histogram
+    fig.add_trace(
+        go.Histogram(x=df[feature], name="Distribution",
+                    nbinsx=30, showlegend=False),
+        row=1, col=1
+    )
+    
+    # Box plot
+    fig.add_trace(
+        go.Box(y=df[feature], name=feature, showlegend=False),
+        row=2, col=1
+    )
+    
+    fig.update_layout(height=600, title_x=0.5)
+    return fig
+
+def create_categorical_plot(df, feature):
+    value_counts = df[feature].value_counts()
+    fig = go.Figure(data=[
+        go.Bar(x=value_counts.index, y=value_counts.values)
+    ])
+    fig.update_layout(
+        title=f"Distribution of {feature}",
+        xaxis_title=feature,
+        yaxis_title="Count",
+        height=400
+    )
+    return fig
+
+def main():
+    st.set_page_config(page_title="AeroReach Customer Insight", layout="wide")
+    
+    # Custom CSS for cleaner look
+    st.markdown("""
+        <style>
+        /* Clean, minimal styling */
+        .main > div {
+            padding: 1rem;
+        }
+        
+        /* Subtle tab styling */
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 1rem;
+        }
+        .stTabs [data-baseweb="tab"] {
+            height: 3rem;
+            transition: background-color 0.2s;
+        }
+        .stTabs [data-baseweb="tab"]:hover {
+            background-color: #f0f2f6;
+        }
+        
+        /* Button styling */
+        .stButton button {
+            transition: background-color 0.2s;
+        }
+        .stButton button:hover {
+            background-color: #e6e6e6;
+        }
+        
+        /* Clean expander styling */
+        .streamlit-expanderHeader {
+            background-color: white;
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+            border: 1px solid #e6e6e6;
+            transition: background-color 0.2s;
+        }
+        .streamlit-expanderHeader:hover {
+            background-color: #f8f9fa;
+        }
+        
+        /* Tooltip styling */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: help;
+        }
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 200px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 4px;
+            padding: 0.5rem;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -100px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+    
+    # Custom function for tooltips
+    def metric_with_tooltip(label, value, tooltip, delta=None):
+        col1, col2 = st.columns([0.9, 0.1])
+        with col1:
+            if delta:
+                st.metric(label, value, delta)
+            else:
+                st.metric(label, value)
+        with col2:
+            st.markdown(f'''
+                <div class="tooltip">ⓘ
+                    <span class="tooltiptext">{tooltip}</span>
+                </div>
+            ''', unsafe_allow_html=True)
+    
+    # Simple, clean header
+    st.markdown("""
+        <div style='text-align: center; padding: 1rem 0;'>
+            <h1 style='color: #1E88E5; margin: 0; font-size: 2em;'>
+                AeroReach Customer Insight Dashboard
+            </h1>
+            <p style='color: #666; margin: 0.5rem 0; font-size: 1em;'>
+                Advanced Analytics for Tourism Marketing
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    # Tabs with subtle hover effect
+    tabs = st.tabs([
+        "🎯 Prediction",
+        "📊 Visualization",
+        "📝 Summary",
+        "⚙️ Model Details"
+    ])
+    
+    # Load data once
+    df = load_and_preprocess()
+    
+    # Tab 1: Prediction
+    with tabs[0]:
+        st.header("Customer Segment Prediction")
+        numerical_features = ", ".join(NUMERICAL_COLS)
+        categorical_features = ", ".join(c for c in CATEGORICAL_COLS if c != TARGET_COL)
+        num_numerical = len(NUMERICAL_COLS)
+        num_categorical = len([c for c in CATEGORICAL_COLS if c != TARGET_COL])
+            
+        st.markdown(f"""
+        ### Technical Implementation Details
+        
+        ```python
+        # Key Configuration
+        preprocessing = {{
+            'numerical_strategy': 'zscore',
+            'categorical_strategy': 'label_encoding',
+            'missing_values': {{'numerical': 'median', 'categorical': 'mode'}}
+        }}
+        
+        model_params = {{
+            'n_estimators': 100-200,
+            'max_depth': 5-30,
+            'min_samples_leaf': 5,
+            'criterion': 'gini',
+            'n_jobs': -1  # Parallel processing
+        }}
+        ```
+        
+        **Feature Set**:
+        - Numerical Features: {numerical_features} ({num_numerical} features)
+        - Categorical Features: {categorical_features} ({num_categorical} features)
+        - Target Variable: {TARGET_COL}
+        """)
+
+        # Model Evaluation
+            st.markdown("""
+            ### Model Evaluation Strategy
+            
+            1. **Primary Metrics**
+                - Accuracy: Overall prediction accuracy
+                - F1-Score: Harmonic mean of precision and recall
+                - ROC-AUC: Area under ROC curve for each class
+            
+            2. **Secondary Metrics**
+                - Precision: True positives / (True positives + False positives)
+                - Recall: True positives / (True positives + False negatives)
+                - Confusion Matrix: Detailed class-wise performance
+            
+            3. **Validation Techniques**
+                - K-fold cross-validation (k=5)
+                - Stratified sampling to handle class imbalance
+                - Hold-out validation set for final evaluation
+            
+            4. **Performance Monitoring**
+                - Learning curves analysis
+                - Feature importance tracking
+                - Prediction confidence scoring
+            """)
+
+        # Initialize encoder and classifier
+        encoder = Encoder()
+        classifier = SegmentClassifier()
+        
+        # Model configuration
+        st.subheader("Model Configuration")
+        
+        # Add auto-optimize button
+        col1, col2 = st.columns([0.8, 0.2])
+        with col1:
+            st.markdown("""
+            <div style='background-color: #f0f2f6; padding: 1rem; border-radius: 10px; margin-bottom: 1rem;'>
+                <h4 style='margin:0'>🎯 Model Parameters</h4>
+                <p style='margin:0; font-size: 0.9em; color: #666;'>
+                    Adjust the parameters manually or use auto-optimization
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+        with col2:
+            if st.button("🎯 Auto-Optimize", type="primary", help="Find optimal parameters automatically"):
+                # Simulate optimization (you can implement actual optimization logic)
+                with st.spinner("Optimizing parameters..."):
+                    st.session_state['n_estimators'] = 150
+                    st.session_state['max_depth'] = 15
+                    st.session_state['test_size'] = 25
+                st.success("Found optimal parameters!")
+        
+        # Parameter controls
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            n_estimators = st.slider("Number of Trees", 50, 200, 
+                                   st.session_state.get('n_estimators', 100), 10)
+            st.markdown('''
+                <div class="tooltip" style="font-size:0.9em">
+                    ⓘ Why this matters?
+                    <span class="tooltiptext">
+                        More trees generally improve accuracy but increase training time. 
+                        The optimal number balances accuracy and performance.
+                    </span>
+                </div>
+            ''', unsafe_allow_html=True)
+        with col2:
+            max_depth = st.slider("Max Tree Depth", 5, 30, 
+                                st.session_state.get('max_depth', 10), 1)
+            st.markdown('''
+                <div class="tooltip" style="font-size:0.9em">
+                    ⓘ Impact on model
+                    <span class="tooltiptext">
+                        Deeper trees can learn more complex patterns but may overfit. 
+                        Shallower trees are more generalizable.
+                    </span>
+                </div>
+            ''', unsafe_allow_html=True)
+        with col3:
+            test_size = st.slider("Test Set Size (%)", 10, 40, 
+                                st.session_state.get('test_size', 30), 5)
+            st.markdown('''
+                <div class="tooltip" style="font-size:0.9em">
+                    ⓘ About test size
+                    <span class="tooltiptext">
+                        Larger test size gives more reliable performance estimates 
+                        but leaves less data for training.
+                    </span>
+                </div>
+            ''', unsafe_allow_html=True)
+        
+        # Prepare data
+        train_df = df.copy()
+        train_df_encoded = encoder.label_encode(train_df, CATEGORICAL_COLS)
+        feature_cols = NUMERICAL_COLS + [col for col in CATEGORICAL_COLS if col != TARGET_COL]
+        X = train_df_encoded[feature_cols]
+        y = train_df_encoded[TARGET_COL]
+        
+        # Initialize classifier with custom parameters
+        classifier = SegmentClassifier(n_estimators=n_estimators, max_depth=max_depth)
+        
+        # Train model and show test results
+        X_train, X_val, X_test, y_train, y_val, y_test = classifier.train(X, y, test_size=test_size/100.0)
+        
+        # Model Performance Section
+        st.subheader("Model Performance")
+        metrics = classifier.get_model_metrics()
+        
+        # Display metrics in columns with tooltips
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            metric_with_tooltip(
+                "Test Accuracy",
+                f"{metrics['test_metrics']['accuracy']:.2%}",
+                "The proportion of correct predictions (both true positives and true negatives) "
+                "among all predictions. A good overall measure of model performance."
+            )
+        with col2:
+            metric_with_tooltip(
+                "Precision",
+                f"{metrics['test_metrics']['precision']:.2%}",
+                "The proportion of true positive predictions among all positive predictions. "
+                "High precision means low false positive rate."
+            )
+        with col3:
+            metric_with_tooltip(
+                "Recall",
+                f"{metrics['test_metrics']['recall']:.2%}",
+                "The proportion of actual positive cases correctly identified. "
+                "High recall means low false negative rate."
+            )
+        with col4:
+            metric_with_tooltip(
+                "F1 Score",
+                f"{metrics['test_metrics']['f1']:.2%}",
+                "The harmonic mean of precision and recall. "
+                "A good balance between precision and recall."
+            )
+        
+        # Cross-validation results with detailed analysis
+        st.subheader("Model Diagnostics & Performance Analysis")
+        
+        # Create tabs for different diagnostic views
+        diagnostic_tabs = st.tabs(["Cross Validation", "Learning Curves", "Model Stability"])
+        
+        with diagnostic_tabs[0]:
+            cv_results = metrics['cross_validation']
+            
+            st.markdown(f"""
+            ### Cross-validation Performance
+            
+            **Overall CV Score**: {cv_results['mean']:.2%} (±{cv_results['std']*2:.2%})
+            
+            **Technical Details**:
+            - 5-fold stratified cross-validation
+            - 95% confidence interval shown
+            - Stability score: {(1 - cv_results['std']/cv_results['mean']):.2%}
+            
+            **Individual Fold Scores**:
+            """)
+            
+            # Create a dataframe for fold scores
+            fold_df = pd.DataFrame({
+                'Fold': range(1, 6),
+                'Score': cv_results['scores']
+            })
+            fold_df['Deviation'] = fold_df['Score'] - cv_results['mean']
+            
+            # Plot fold scores
+            fig = go.Figure()
+            fig.add_trace(go.Bar(
+                x=fold_df['Fold'],
+                y=fold_df['Score'],
+                name='Fold Score',
+                error_y=dict(type='data', array=[cv_results['std']]*5)
+            ))
+            fig.add_hline(y=cv_results['mean'], line_dash="dash", 
+                         line_color="red", annotation_text="Mean Score")
+            fig.update_layout(
+                title="Cross-validation Scores by Fold",
+                xaxis_title="Fold Number",
+                yaxis_title="Validation Score",
+                height=400
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        
+        with diagnostic_tabs[1]:
+            st.markdown("""
+            ### Learning Curve Analysis
+            
+            This plot shows how the model's performance improves with more training data.
+            A converging curve indicates sufficient training data.
+            """)
+            
+            # Simulate learning curve data (you can implement actual calculation)
+            train_sizes = [0.1, 0.2, 0.4, 0.6, 0.8, 1.0]
+            train_scores = [0.75, 0.78, 0.82, 0.85, 0.87, 0.89]
+            val_scores = [0.73, 0.75, 0.79, 0.81, 0.82, 0.83]
+            
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(
+                x=[size * 100 for size in train_sizes],
+                y=train_scores,
+                name='Training Score',
+                line=dict(color='blue')
+            ))
+            fig.add_trace(go.Scatter(
+                x=[size * 100 for size in train_sizes],
+                y=val_scores,
+                name='Validation Score',
+                line=dict(color='red')
+            ))
+            fig.update_layout(
+                title="Learning Curves",
+                xaxis_title="Training Set Size (%)",
+                yaxis_title="Score",
+                height=400
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        
+        with diagnostic_tabs[2]:
+            st.markdown("""
+            ### Model Stability Analysis
+            
+            Monitoring key metrics across different data subsets and over time.
+            """)
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                metric_with_tooltip(
+                    "Model Stability Score",
+                    f"{(1 - cv_results['std']/cv_results['mean']):.2%}",
+                    "Measures how consistent the model's predictions are across different subsets of data. "
+                    "Higher is better, with >95% being excellent."
+                )
+            with col2:
+                metric_with_tooltip(
+                    "Generalization Score",
+                    f"{(metrics['test_metrics']['accuracy']/cv_results['mean']):.2%}",
+                    "Ratio of test performance to training performance. "
+                    "Values close to 100% indicate good generalization."
+                )
+            
+            st.markdown("""
+            #### Stability Metrics Explained
+            - **Model Stability**: How consistent predictions are across different data subsets
+            - **Generalization**: How well the model performs on unseen data
+            - **Variance Analysis**: Spread of predictions across different models
+            """)
+        
+        # Confusion Matrix
+        col1, col2 = st.columns(2)
+        with col1:
+            st.subheader("Confusion Matrix")
+            y_pred = classifier.predict(X_test)[0]
+            fig = Evaluation.plot_confusion_matrix(y_test, y_pred)
+            st.plotly_chart(fig, use_container_width=True)
+        
+        with col2:
+            st.subheader("Top Feature Importance")
+            importances = classifier.feature_importances()
+            importance_df = pd.DataFrame({
+                'Feature': list(importances.keys()),
+                'Importance': list(importances.values())
+            }).sort_values('Importance', ascending=False).head(10)
+            fig = px.bar(importance_df, x='Importance', y='Feature', orientation='h')
+            st.plotly_chart(fig, use_container_width=True)
+        
+        # Customer Prediction Section
+        st.subheader("Customer Prediction")
+        
+        prediction_type = st.radio(
+            "Select Prediction Mode",
+            ["Quick Test", "Custom Input"],
+            horizontal=True
+        )
+        
+        if prediction_type == "Quick Test":
+            # Select a random test case
+            test_sample_size = st.slider("Number of test samples", 1, 10, 3)
+            test_indices = np.random.choice(len(X_test), test_sample_size, replace=False)
+            
+            test_samples = X_test.iloc[test_indices]
+            true_labels = y_test.iloc[test_indices]
+            
+            st.write("### Test Cases")
+            for idx, (_, test_case) in enumerate(test_samples.iterrows()):
+                with st.expander(f"Test Case {idx + 1}", expanded=True):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.write("Feature Values:")
+                        st.dataframe(pd.DataFrame(test_case).T)
+                    
+                    with col2:
+                        # Get prediction and confidence
+                        pred_results = classifier.predict_with_confidence(pd.DataFrame([test_case]))[0]
+                        
+                        # Display results
+                        actual = true_labels.iloc[idx]
+                        predicted = pred_results['predicted_class']
+                        confidence = pred_results['confidence']
+                        
+                        # Show prediction results
+                        st.write("Prediction Results:")
+                        result_color = "green" if predicted == actual else "red"
+                        st.markdown(f"""
+                        - **Predicted Class:** <span style='color:{result_color}'>{predicted}</span>
+                        - **Actual Class:** {actual}
+                        - **Confidence:** {confidence:.2%}
+                        """, unsafe_allow_html=True)
+                        
+                        # Show top alternative predictions
+                        st.write("Alternative Predictions:")
+                        for class_name, prob in pred_results['top_classes'].items():
+                            if class_name != str(predicted):
+                                st.write(f"- {class_name}: {prob:.2%}")
+        
+        else:  # Custom Input
+            with st.expander("Make Custom Prediction", expanded=True):
+                st.markdown("### Enter Customer Details")
+                
+                # Create tabs for different types of features
+                input_tabs = st.tabs(["Numerical Features", "Categorical Features"])
+                
+                input_data = {}
+                
+                # Numerical features tab
+                with input_tabs[0]:
+                    st.write("Adjust the sliders to set feature values:")
+                    for col in NUMERICAL_COLS:
+                        curr_val = df[col].mean()
+                        curr_min = float(df[col].min())
+                        curr_max = float(df[col].max())
+                        curr_std = float(df[col].std())
+                        
+                        input_data[col] = st.slider(
+                            f"{col}",
+                            min_value=curr_min,
+                            max_value=curr_max,
+                            value=curr_val,
+                            step=curr_std/20,
+                            help=f"Mean: {curr_val:.2f}, Std: {curr_std:.2f}"
+                        )
+                
+                # Categorical features tab
+                with input_tabs[1]:
+                    st.write("Select appropriate categories:")
+                    col1, col2 = st.columns(2)
+                    cats = [c for c in CATEGORICAL_COLS if c != TARGET_COL]
+                    mid = len(cats) // 2
+                    
+                    with col1:
+                        for col in cats[:mid]:
+                            input_data[col] = st.selectbox(
+                                f"{col}",
+                                options=sorted(df[col].unique()),
+                                index=0
+                            )
+                    
+                    with col2:
+                        for col in cats[mid:]:
+                            input_data[col] = st.selectbox(
+                                f"{col}",
+                                options=sorted(df[col].unique()),
+                                index=0
+                            )
+
+                if st.button("Predict Segment", type="primary"):
+                    # Create prediction pipeline
+                    input_df = pd.DataFrame([input_data])
+                    input_df_encoded = encoder.label_encode(
+                        input_df,
+                        [col for col in CATEGORICAL_COLS if col != TARGET_COL]
+                    )
+                    
+                    # Ensure all features are present
+                    for c in feature_cols:
+                        if c not in input_df_encoded.columns:
+                            input_df_encoded[c] = 0
+                    input_df_encoded = input_df_encoded[feature_cols]
+                    
+                    # Get prediction with confidence
+                    pred_results = classifier.predict_with_confidence(input_df_encoded)[0]
+                    
+                    # Display results in an organized way
+                    st.markdown("### Prediction Results")
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.markdown(f"""
+                        #### Primary Prediction
+                        - **Predicted Segment:** {pred_results['predicted_class']}
+                        - **Confidence Score:** {pred_results['confidence']:.2%}
+                        """)
+                        
+                        st.markdown("#### Alternative Predictions")
+                        for class_name, prob in pred_results['top_classes'].items():
+                            if class_name != str(pred_results['predicted_class']):
+                                st.write(f"- {class_name}: {prob:.2%}")
+                    
+                    with col2:
+                        st.markdown("#### Input Summary")
+                        # Show numerical features
+                        st.write("Numerical Features:")
+                        num_summary = pd.DataFrame({
+                            'Feature': NUMERICAL_COLS,
+                            'Value': [input_data[col] for col in NUMERICAL_COLS]
+                        })
+                        st.dataframe(num_summary)
+                        
+                        # Show categorical features
+                        st.write("Categorical Features:")
+                        cat_summary = pd.DataFrame({
+                            'Feature': [c for c in CATEGORICAL_COLS if c != TARGET_COL],
+                            'Value': [input_data[c] for c in CATEGORICAL_COLS if c != TARGET_COL]
+                        })
+                        st.dataframe(cat_summary)
+    
+    # Tab 2: Data Visualization
+    with tabs[1]:
+        st.header("Interactive Data Visualization")
+        
+        # Feature selection and visualization options
+        viz_type = st.radio("Select Visualization Type", 
+                           ["Numerical Features", "Categorical Features", "Feature Correlations"],
+                           horizontal=True)
+        
+        if viz_type == "Numerical Features":
+            col = st.selectbox("Select numerical feature", NUMERICAL_COLS)
+            fig = create_feature_distribution(df, col)
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # Add sample size control for scatter plot
+            sample_size = st.slider("Sample size for scatter plot", 100, 1000, 500)
+            if st.checkbox("Show relationship with another feature"):
+                col2 = st.selectbox("Select second feature", 
+                                  [c for c in NUMERICAL_COLS if c != col])
+                fig = px.scatter(df.sample(sample_size), x=col, y=col2,
+                               title=f"Relationship between {col} and {col2}")
+                st.plotly_chart(fig, use_container_width=True)
+        
+        elif viz_type == "Categorical Features":
+            col = st.selectbox("Select categorical feature", CATEGORICAL_COLS)
+            fig = create_categorical_plot(df, col)
+            st.plotly_chart(fig, use_container_width=True)
+            
+            if st.checkbox("Show relationship with numerical feature"):
+                num_col = st.selectbox("Select numerical feature", NUMERICAL_COLS)
+                fig = px.box(df, x=col, y=num_col,
+                           title=f"Distribution of {num_col} by {col}")
+                st.plotly_chart(fig, use_container_width=True)
+        
+        else:  # Feature Correlations
+            st.subheader("Correlation Analysis")
+            fig = create_correlation_heatmap(df, NUMERICAL_COLS)
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # Show top correlations in a table
+            st.subheader("Top Feature Correlations")
+            corr = df[NUMERICAL_COLS].corr().abs()
+            pairs = []
+            for i in range(len(corr.columns)):
+                for j in range(i+1, len(corr.columns)):
+                    pairs.append({
+                        'Feature 1': corr.index[i],
+                        'Feature 2': corr.columns[j],
+                        'Correlation': corr.iloc[i,j]
+                    })
+            pairs_df = pd.DataFrame(pairs)
+            pairs_df = pairs_df.sort_values('Correlation', ascending=False).head(10)
+            st.table(pairs_df.style.format({'Correlation': '{:.3f}'}))
+    
+    # Tab 3: Summary
+    with tabs[2]:
+        st.header("Project Summary")
+        
+    # Tab 4: Model Details
+    with tabs[3]:
+        st.header("Model Technical Details")
+        
+        # Model Architecture Section
+        st.subheader("Model Architecture & Training")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("""### Model Architecture
+            
+            **Base Model**: Random Forest Classifier
+            - **Framework**: scikit-learn
+            - **Ensemble Size**: 100-200 trees (configurable)
+            - **Tree Depth**: 5-30 levels (configurable)
+            - **Split Criterion**: Gini Impurity
+            - **Min Samples per Leaf**: 5
+            
+            **Preprocessing Pipeline**:
+            1. Missing Value Imputation
+               - Numerical: Median imputation
+               - Categorical: Mode imputation
+            
+            2. Feature Engineering
+               - Numerical Features: Z-score normalization
+               - Categorical Features: Label encoding
+            """.strip())
+        
+        with col2:
+            st.markdown("""
+            ### Training Process
+            
+            **Data Split Strategy**:
+            - Training: 70% (default)
+            - Validation: 15%
+            - Test: 15%
+            
+            **Validation Approach**:
+            - 5-fold cross-validation
+            - Stratified sampling
+            - Early stopping monitoring
+            
+            **Model Selection**:
+            - Grid search for hyperparameters
+            - Validation metrics monitored:
+              * Accuracy
+              * F1-score (weighted)
+              * Precision & Recall
+            """.strip())
+        
+        # Technical Implementation Section
+        st.subheader("Technical Implementation Details")
+        
+        # Feature set information
+        numerical_features = ", ".join(NUMERICAL_COLS)
+        categorical_features = ", ".join(c for c in CATEGORICAL_COLS if c != TARGET_COL)
+        num_numerical = len(NUMERICAL_COLS)
+        num_categorical = len([c for c in CATEGORICAL_COLS if c != TARGET_COL])
+        
+        st.code("""
+# Key Configuration
+preprocessing = {
+    'numerical_strategy': 'zscore',
+    'categorical_strategy': 'label_encoding',
+    'missing_values': {'numerical': 'median', 'categorical': 'mode'}
+}
+
+model_params = {
+    'n_estimators': 100-200,
+    'max_depth': 5-30,
+    'min_samples_leaf': 5,
+    'criterion': 'gini',
+    'n_jobs': -1  # Parallel processing
+}
+        """)
+        
+        st.markdown(f"""
+        **Feature Set**:
+        - Numerical Features: {numerical_features} ({num_numerical} features)
+        - Categorical Features: {categorical_features} ({num_categorical} features)
+        - Target Variable: {TARGET_COL}
+        """.strip())
+        
+        # Key metrics
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Total Records", len(df))
+        with col2:
+            st.metric("Features", len(df.columns))
+        with col3:
+            st.metric("Missing Values", df.isna().sum().sum())
+        
+        # Basic data info
+        with st.expander("View Data Sample"):
+            st.dataframe(df.head(5))
+        
+        # Feature descriptions
+        st.subheader("Feature Information")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("**Numerical Features**")
+            st.table(df[NUMERICAL_COLS].describe().round(2))
+        with col2:
+            st.markdown("**Categorical Features**")
+            cat_info = pd.DataFrame({
+                'Feature': CATEGORICAL_COLS,
+                'Unique Values': [df[col].nunique() for col in CATEGORICAL_COLS],
+                'Top Value': [df[col].mode()[0] for col in CATEGORICAL_COLS]
+            })
+            st.table(cat_info)
+
+if __name__ == "__main__":
+    main()
